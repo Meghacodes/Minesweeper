@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #00050f 0%, #0a0a0a 50%, #0e0e0f 100%);
+            color: rgb(243, 243, 246);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(24, 24, 24, 0.1) 1px, transparent 1px),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.1) 1px, transparent 1px),
+                radial-gradient(circle at 40% 80%, rgba(255,255,255,0.1) 1px, transparent 1px);
+            animation: sparkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes sparkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 1;
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #c0ae4a, #ffec8c, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 20px;
+        }
+        
+        .info {
+            font-size: 18px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .reset-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .reset-btn:hover {
+            background: linear-gradient(45deg, #ff5252, #ff7979);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: inset 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(145deg, #e0e0e0, #c0c0c0);
+            border: 3px solid #f0f0f0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .cell:hover {
+            background: linear-gradient(145deg, #f0f0f0, #d0d0d0);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .cell.revealed {
+            transform: scale(1);
+            cursor: default;
+        }
+        
+        .cell.bomb {
+            background: linear-gradient(145deg, #ff4444, #cc3333);
+            color: white;
+            animation: explode 0.8s ease-out;
+            border: 3px solid #ff6666;
+        }
+        
+        @keyframes explode {
+            0% { 
+                transform: scale(1); 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            30% { 
+                transform: scale(1.3); 
+                box-shadow: 0 0 30px rgba(255, 68, 68, 0.8);
+            }
+            60% { 
+                transform: scale(0.9); 
+                box-shadow: 0 0 40px rgba(255, 68, 68, 1);
+            }
+            100% { 
+                transform: scale(1); 
+                box-shadow: 0 0 20px rgba(255, 68, 68, 0.6);
+            }
+        }
+        
+        .cell.diamond {
+            background: linear-gradient(145deg, #00d4ff, #0099cc);
+            color: white;
+            animation: diamondSpark 0.8s ease-out;
+            border: 3px solid #33ddff;
+        }
+        
+        @keyframes diamondSpark {
+            0% { 
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+            50% { 
+                transform: scale(1.2);
+                box-shadow: 0 0 30px rgba(0, 212, 255, 0.8);
+            }
+            100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+            }
+        }
+        
+        .game-over {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .win {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid #4caf50;
+            animation: celebration 1s ease-in-out infinite alternate;
+        }
+        
+        @keyframes celebration {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.03); }
+        }
+        
+        .lose {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+            border: 2px solid #ff4444;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 16px;
+            opacity: 0.9;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            line-height: 1.4;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            font-size: 16px;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 16px;
+            border-radius: 10px;
+            flex: 1;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="title">MINESWEEPER</div>
+        <div class="header">
+            <div class="info">💣 Bombs: <span id="bomb-count">5</span></div>
+            <button class="reset-btn" onclick="initGame()">New Game</button>
+            <div class="info">💎 Score: <span id="score">0</span></div>
+        </div>
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+        </div>
+        <div id="game-board" class="game-board"></div>
+        <div id="game-status" class="game-over"></div>
+        <div class="stats">
+            <div class="stat-item">
+                <div>💎 Diamonds</div>
+                <div class="stat-number" id="diamonds-found">0</div>
+            </div>
+            <div class="stat-item">
+                <div>🎯 Remaining</div>
+                <div class="stat-number" id="tiles-left">20</div>
+            </div>
+            <div class="stat-item">
+                <div>⚡ Streak</div>
+                <div class="stat-number" id="streak">0</div>
+            </div>
+        </div>
+        <div class="instructions">
+            <strong>How to Play:</strong><br>
+            Click any tile - it's either a 💎 Diamond (+10 points) or a 💣 Bomb (game over)!<br>
+            Find all diamonds without hitting any bombs to win!
+        </div>
+    </div>
+
+    <script>
+        const ROWS = 4;
+        const COLS = 5;
+        const BOMBS = 5;
+        const DIAMONDS = 15;
+        const TOTAL_CELLS = ROWS * COLS;
+        
+        let board = [];
+        let gameState = 'playing';
+        let score = 0;
+        let diamondsFound = 0;
+        let tilesRevealed = 0;
+        let streak = 0;
+        
+        function initGame() {
+            board = [];
+            gameState = 'playing';
+            score = 0;
+            diamondsFound = 0;
+            tilesRevealed = 0;
+            streak = 0;
+            
+            updateUI();
+            
+            // Initialize board - every cell is either bomb or diamond
+            let positions = [];
+            for (let i = 0; i < TOTAL_CELLS; i++) {
+                positions.push(i);
+            }
+            
+            // Shuffle positions
+            for (let i = positions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [positions[i], positions[j]] = [positions[j], positions[i]];
+            }
+            
+            // Create board
+            for (let r = 0; r < ROWS; r++) {
+                board[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = {
+                        isRevealed: false,
+                        isBomb: false,
+                        isDiamond: false
+                    };
+                }
+            }
+            
+            // Place bombs in first BOMBS positions
+            for (let i = 0; i < BOMBS; i++) {
+                const pos = positions[i];
+                const row = Math.floor(pos / COLS);
+                const col = pos % COLS;
+                board[row][col].isBomb = true;
+            }
+            
+            // Place diamonds in remaining positions
+            for (let i = BOMBS; i < TOTAL_CELLS; i++) {
+                const pos = positions[i];
+                const row = Math.floor(pos / COLS);
+                const col = pos % COLS;
+                board[row][col].isDiamond = true;
+            }
+            
+            renderBoard();
+        }
+        
+        function revealCell(row, col) {
+            if (gameState !== 'playing' || board[row][col].isRevealed) {
+                return;
+            }
+            
+            board[row][col].isRevealed = true;
+            tilesRevealed++;
+            
+            if (board[row][col].isBomb) {
+                // Hit a bomb - game over
+                gameState = 'lost';
+                streak = 0;
+                revealAllBombs();
+                endGame('💥 BOOM! You hit a bomb! 💥');
+            } else if (board[row][col].isDiamond) {
+                // Found a diamond
+                diamondsFound++;
+                streak++;
+                score += 10 + (streak * 2); // Bonus points for streaks
+                
+                if (diamondsFound === DIAMONDS) {
+                    gameState = 'won';
+                    endGame('🎉 AMAZING! You found all diamonds! 🎉');
+                }
+            }
+            
+            updateUI();
+            renderBoard();
+        }
+        
+        function revealAllBombs() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c].isBomb) {
+                        board[r][c].isRevealed = true;
+                    }
+                }
+            }
+        }
+        
+        function updateUI() {
+            document.getElementById('bomb-count').textContent = BOMBS;
+            document.getElementById('score').textContent = score;
+            document.getElementById('diamonds-found').textContent = diamondsFound;
+            document.getElementById('tiles-left').textContent = TOTAL_CELLS - tilesRevealed;
+            document.getElementById('streak').textContent = streak;
+            
+            // Update progress bar
+            const progress = (diamondsFound / DIAMONDS) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+        }
+        
+        function endGame(message) {
+            const statusEl = document.getElementById('game-status');
+            statusEl.textContent = message;
+            statusEl.className = gameState === 'won' ? 'game-over win' : 'game-over lose';
+        }
+        
+        function renderBoard() {
+            const boardEl = document.getElementById('game-board');
+            boardEl.innerHTML = '';
+            
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    const cellData = board[r][c];
+                    
+                    if (cellData.isRevealed) {
+                        cell.classList.add('revealed');
+                        
+                        if (cellData.isBomb) {
+                            cell.classList.add('bomb');
+                            cell.textContent = '💣';
+                        } else if (cellData.isDiamond) {
+                            cell.classList.add('diamond');
+                            cell.textContent = '💎';
+                        }
+                    } else {
+                        // Show question mark for unrevealed tiles
+                        cell.textContent = '❓';
+                    }
+                    
+                    cell.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        revealCell(parseInt(r), parseInt(c));
+                    });
+                    
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+        
+        // Initialize the game
+        initGame();
+    </script>
+</body>
+</html>
